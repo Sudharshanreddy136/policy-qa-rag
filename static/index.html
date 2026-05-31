@@ -1,1 +1,386 @@
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Company Policy Q&A — FAISS Edition</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 30px 16px;
+    }
+    .container { width: 100%; max-width: 820px; }
+    h1 { font-size: 24px; font-weight: 700; color: #3b82f6; text-align: center; margin-bottom: 2px; }
+    .version { text-align:center; font-size:11px; color:#8b5cf6; font-weight:600; margin-bottom:4px; }
+    .subtitle { text-align: center; color: #64748b; font-size: 12px; margin-bottom: 24px; }
+    .tabs { display:flex; gap:8px; margin-bottom:16px; }
+    .tab {
+      flex:1; padding:10px; text-align:center; border-radius:8px;
+      cursor:pointer; font-size:13px; font-weight:600;
+      background:#1e293b; color:#64748b; border:1px solid #334155; transition:0.2s;
+    }
+    .tab.active { background:#1d4ed8; color:white; border-color:#1d4ed8; }
+    .panel { display:none; }
+    .panel.active { display:block; }
+    .upload-box {
+      background: #1e293b; border: 2px dashed #334155;
+      border-radius: 12px; padding: 28px; text-align: center; margin-bottom: 16px;
+    }
+    .upload-box.dragover { border-color:#3b82f6; }
+    .upload-box input[type=file] { display:none; }
+    .upload-label { cursor:pointer; color:#94a3b8; font-size:14px; }
+    .upload-label span { color:#3b82f6; font-weight:600; }
+    .upload-btn {
+      background:#3b82f6; color:white; border:none;
+      padding:10px 28px; border-radius:8px; font-size:13px;
+      font-weight:600; cursor:pointer; margin-top:12px;
+    }
+    .upload-btn:hover { background:#2563eb; }
+    .upload-btn:disabled { background:#475569; cursor:not-allowed; }
+    .load-box {
+      background:#1e293b; border:1px solid #334155;
+      border-radius:12px; padding:24px; margin-bottom:16px;
+    }
+    .load-box label { font-size:13px; color:#94a3b8; display:block; margin-bottom:8px; }
+    .load-row { display:flex; gap:8px; }
+    .load-input {
+      flex:1; background:#0f172a; border:1px solid #334155;
+      border-radius:8px; padding:10px 14px; color:#e2e8f0; font-size:13px; outline:none;
+    }
+    .load-input:focus { border-color:#8b5cf6; }
+    .load-btn {
+      background:#8b5cf6; color:white; border:none;
+      padding:10px 20px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer;
+    }
+    .load-btn:hover { background:#7c3aed; }
+    .status { text-align:center; font-size:13px; padding:8px 16px; border-radius:6px; margin-bottom:12px; display:none; }
+    .status.success { background:#052e16; color:#4ade80; display:block; }
+    .status.error   { background:#2d0a0a; color:#f87171; display:block; }
+    .status.loading { background:#0c1a2e; color:#60a5fa; display:block; }
+    .session-bar {
+      background:#1e293b; border:1px solid #334155; border-radius:8px;
+      padding:10px 16px; margin-bottom:12px;
+      font-size:12px; color:#94a3b8;
+      display:none; align-items:center; justify-content:space-between;
+    }
+    .session-bar.show { display:flex; }
+    .session-bar .session-name { color:#3b82f6; font-weight:600; }
+    .session-bar .vectors { color:#10b981; font-size:11px; }
+    .chat-box {
+      background:#1e293b; border-radius:12px; padding:20px;
+      min-height:300px; max-height:420px; overflow-y:auto;
+      margin-bottom:12px; display:flex; flex-direction:column; gap:14px;
+    }
+    .chat-placeholder { color:#475569; font-size:13px; text-align:center; margin:auto; }
+    .msg { display:flex; flex-direction:column; gap:4px; }
+    .msg.user { align-items:flex-end; }
+    .msg.bot  { align-items:flex-start; }
+    .bubble { padding:10px 14px; border-radius:10px; font-size:13px; line-height:1.6; max-width:88%; }
+    .msg.user .bubble { background:#1d4ed8; color:white; border-bottom-right-radius:2px; }
+    .msg.bot  .bubble { background:#0f172a; color:#cbd5e1; border:1px solid #334155; border-bottom-left-radius:2px; }
+    .msg-label { font-size:10px; color:#475569; font-weight:600; letter-spacing:0.5px; }
+    .sources-toggle { font-size:11px; color:#8b5cf6; cursor:pointer; margin-top:4px; }
+    .sources-box {
+      background:#0f172a; border:1px solid #312e81; border-radius:6px;
+      padding:10px 12px; font-size:11px; color:#64748b;
+      line-height:1.6; margin-top:4px; display:none; max-width:88%;
+    }
+    .score-badge {
+      display:inline-block; background:rgba(139,92,246,0.2);
+      color:#a78bfa; font-size:10px; padding:1px 6px; border-radius:3px; margin-right:4px;
+    }
+    .input-row { display:flex; gap:10px; }
+    .question-input {
+      flex:1; background:#1e293b; border:1px solid #334155;
+      border-radius:8px; padding:12px 14px; color:#e2e8f0; font-size:13px; outline:none;
+    }
+    .question-input:focus { border-color:#3b82f6; }
+    .question-input::placeholder { color:#475569; }
+    .ask-btn {
+      background:#3b82f6; color:white; border:none;
+      padding:12px 22px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer;
+    }
+    .ask-btn:hover { background:#2563eb; }
+    .ask-btn:disabled { background:#475569; cursor:not-allowed; }
+    .bottom-row { display:flex; justify-content:flex-end; margin-top:8px; }
+    .reset-btn {
+      background:transparent; color:#ef4444; border:1px solid #ef4444;
+      padding:5px 14px; border-radius:6px; font-size:11px; cursor:pointer;
+    }
+    .reset-btn:hover { background:#ef4444; color:white; }
+    .spinner {
+      display:inline-block; width:13px; height:13px;
+      border:2px solid #475569; border-top-color:#3b82f6;
+      border-radius:50%; animation:spin 0.7s linear infinite;
+      vertical-align:middle; margin-right:6px;
+    }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .faiss-badge {
+      display:inline-block; background:rgba(16,185,129,0.15);
+      color:#10b981; font-size:10px; padding:2px 8px; border-radius:3px; font-weight:600; margin-left:6px;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>📄 Company Policy Q&A <span class="faiss-badge">FAISS</span></h1>
+  <div class="version">v2.0 — Vector Search Edition</div>
+  <p class="subtitle">Upload PDF → FAISS index built → Ask questions → Grounded answers</p>
+
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('upload')">📤 Upload New PDF</div>
+    <div class="tab" onclick="switchTab('load')">📂 Load Saved Session</div>
+  </div>
+
+  <div class="panel active" id="panel-upload">
+    <div class="upload-box" id="dropZone">
+      <label class="upload-label" for="pdfInput">
+        <div style="font-size:28px;margin-bottom:8px;">📂</div>
+        <div>Drag & drop PDF here or <span>browse</span></div>
+        <div style="font-size:11px;margin-top:4px;color:#475569;">Policy docs, HR manuals, guidelines</div>
+      </label>
+      <input type="file" id="pdfInput" accept=".pdf"/>
+      <br/>
+      <button class="upload-btn" id="uploadBtn" onclick="uploadPDF()" disabled>
+        Upload & Build FAISS Index
+      </button>
+      <div id="fileName" style="margin-top:8px;font-size:12px;color:#64748b;"></div>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-load">
+    <div class="load-box">
+      <label>Enter Session ID to reload a previously uploaded PDF (no re-upload needed!):</label>
+      <div class="load-row">
+        <input class="load-input" id="loadSessionInput" type="text" placeholder="e.g. Sample_Company_Policy"/>
+        <button class="load-btn" onclick="loadSession()">Load Session</button>
+      </div>
+      <div style="margin-top:12px;font-size:11px;color:#475569;">
+        💡 Session ID = PDF filename without .pdf
+      </div>
+    </div>
+  </div>
+
+  <div class="status" id="statusMsg"></div>
+
+  <div class="session-bar" id="sessionBar">
+    <span>📄 Active: <span class="session-name" id="activeSession">—</span></span>
+    <span class="vectors" id="vectorCount">0 vectors in FAISS</span>
+  </div>
+
+  <div class="chat-box" id="chatBox">
+    <div class="chat-placeholder" id="placeholder">
+      Upload a PDF or load a saved session to start 👆
+    </div>
+  </div>
+
+  <div class="input-row">
+    <input class="question-input" id="questionInput" type="text"
+      placeholder="Ask a question about the document..."
+      disabled onkeydown="if(event.key==='Enter') askQuestion()"/>
+    <button class="ask-btn" id="askBtn" onclick="askQuestion()" disabled>Ask</button>
+  </div>
+
+  <div class="bottom-row">
+    <button class="reset-btn" id="resetBtn" onclick="resetHistory()" style="display:none;">
+      🔄 Clear Chat History
+    </button>
+  </div>
+</div>
+
+<script>
+  let sessionId = null;
+  let msgCounter = 0;
+
+  function switchTab(tab) {
+    document.querySelectorAll('.tab').forEach((t, i) => {
+      t.classList.toggle('active', (i === 0 && tab === 'upload') || (i === 1 && tab === 'load'));
+    });
+    document.getElementById('panel-upload').classList.toggle('active', tab === 'upload');
+    document.getElementById('panel-load').classList.toggle('active', tab === 'load');
+  }
+
+  document.getElementById('pdfInput').addEventListener('change', function() {
+    const file = this.files[0];
+    if (file) {
+      document.getElementById('fileName').textContent = 'Selected: ' + file.name;
+      document.getElementById('uploadBtn').disabled = false;
+    }
+  });
+
+  const dropZone = document.getElementById('dropZone');
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('dragover');
+    const file = e.dataTransfer.files[0];
+    if (file && file.name.endsWith('.pdf')) {
+      document.getElementById('fileName').textContent = 'Selected: ' + file.name;
+      document.getElementById('uploadBtn').disabled = false;
+    }
+  });
+
+  function showStatus(msg, type) {
+    const el = document.getElementById('statusMsg');
+    el.textContent = msg;
+    el.className = 'status ' + type;
+  }
+
+  function activateChat(sid, filename, vectors) {
+    sessionId = sid;
+    document.getElementById('questionInput').disabled = false;
+    document.getElementById('askBtn').disabled = false;
+    document.getElementById('resetBtn').style.display = 'block';
+    document.getElementById('placeholder').style.display = 'none';
+    const bar = document.getElementById('sessionBar');
+    bar.classList.add('show');
+    document.getElementById('activeSession').textContent = filename + ' (ID: ' + sid + ')';
+    document.getElementById('vectorCount').textContent = vectors + ' vectors in FAISS index';
+  }
+
+  async function uploadPDF() {
+    const fileInput = document.getElementById('pdfInput');
+    const file = fileInput.files[0];
+    if (!file) return;
+    const btn = document.getElementById('uploadBtn');
+    btn.disabled = true;
+    btn.textContent = 'Building FAISS index...';
+    showStatus('⏳ Extracting text, chunking, embedding, building FAISS index...', 'loading');
+    const formData = new FormData();
+    formData.append('file', file);
+    try {
+      const res = await fetch('/upload', { method: 'POST', body: formData });
+      const text = await res.text();
+      let data;
+      try { data = JSON.parse(text); } catch(e) { throw new Error('Server error: ' + text.substring(0, 100)); }
+      if (!res.ok) throw new Error(data.detail || 'Upload failed');
+      showStatus('✅ FAISS index built! ' + data.chunks_created + ' chunks → ' + data.vectors_in_faiss + ' vectors. Session ID: ' + data.session_id, 'success');
+      activateChat(data.session_id, data.filename, data.vectors_in_faiss);
+      btn.textContent = 'Upload Another PDF';
+      btn.disabled = false;
+    } catch(err) {
+      showStatus('❌ ' + err.message, 'error');
+      btn.disabled = false;
+      btn.textContent = 'Upload & Build FAISS Index';
+    }
+  }
+
+  async function loadSession() {
+    const sid = document.getElementById('loadSessionInput').value.trim();
+    if (!sid) return;
+    showStatus('⏳ Loading FAISS index from disk...', 'loading');
+    try {
+      const res = await fetch('/load/' + sid, { method: 'POST' });
+      const text = await res.text();
+      let data;
+      try { data = JSON.parse(text); } catch(e) { throw new Error('Server error'); }
+      if (!res.ok) throw new Error(data.detail || 'Load failed');
+      showStatus('✅ Session loaded! ' + data.vectors_loaded + ' vectors ready.', 'success');
+      activateChat(sid, sid + '.pdf', data.vectors_loaded);
+    } catch(err) {
+      showStatus('❌ ' + err.message, 'error');
+    }
+  }
+
+  async function askQuestion() {
+    const input = document.getElementById('questionInput');
+    const question = input.value.trim();
+    if (!question || !sessionId) return;
+    input.value = '';
+    document.getElementById('askBtn').disabled = true;
+    addMessage('user', question);
+    const loadingId = addMessage('bot', '<span class="spinner"></span> Searching FAISS index...');
+    try {
+      const res = await fetch('/ask', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: sessionId, question: question })
+      });
+      const text = await res.text();
+      let data;
+      try { data = JSON.parse(text); } catch(e) {
+        updateMessage(loadingId, '❌ Could not parse server response.');
+        document.getElementById('askBtn').disabled = false;
+        return;
+      }
+      if (!res.ok) {
+        updateMessage(loadingId, '❌ ' + (data.detail || 'Something went wrong'));
+      } else {
+        updateMessage(loadingId, data.answer, data.sources, data.scores);
+      }
+    } catch(err) {
+      updateMessage(loadingId, '❌ ' + err.message);
+    }
+    document.getElementById('askBtn').disabled = false;
+    input.focus();
+  }
+
+  function addMessage(role, html) {
+    msgCounter++;
+    const id = 'msg-' + msgCounter;
+    const chatBox = document.getElementById('chatBox');
+    const div = document.createElement('div');
+    div.className = 'msg ' + role;
+    div.id = id;
+    const label = document.createElement('div');
+    label.className = 'msg-label';
+    label.textContent = role === 'user' ? 'YOU' : 'AI ASSISTANT';
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    bubble.innerHTML = html;
+    div.appendChild(label);
+    div.appendChild(bubble);
+    chatBox.appendChild(div);
+    chatBox.scrollTop = chatBox.scrollHeight;
+    return id;
+  }
+
+  function updateMessage(id, text, sources, scores) {
+    const div = document.getElementById(id);
+    if (!div) return;
+    const bubble = div.querySelector('.bubble');
+    if (!bubble) return;
+    bubble.innerHTML = text.replace(/\n/g, '<br/>');
+    if (sources && sources.length > 0) {
+      const toggle = document.createElement('div');
+      toggle.className = 'sources-toggle';
+      toggle.textContent = '🔍 View FAISS retrieved chunks';
+      const srcBox = document.createElement('div');
+      srcBox.className = 'sources-box';
+      srcBox.innerHTML = sources.map(function(s, i) {
+        const score = scores ? scores[i] : '';
+        return '<span class="score-badge">score: ' + score + '</span><b>Chunk ' + (i+1) + ':</b> ' + s.substring(0, 250) + '...';
+      }).join('<br/><br/>');
+      toggle.onclick = function() {
+        if (srcBox.style.display === 'block') {
+          srcBox.style.display = 'none';
+          toggle.textContent = '🔍 View FAISS retrieved chunks';
+        } else {
+          srcBox.style.display = 'block';
+          toggle.textContent = '🔍 Hide chunks';
+        }
+      };
+      div.appendChild(toggle);
+      div.appendChild(srcBox);
+    }
+    document.getElementById('chatBox').scrollTop = document.getElementById('chatBox').scrollHeight;
+  }
+
+  async function resetHistory() {
+    if (!sessionId) return;
+    await fetch('/reset/' + sessionId, { method: 'POST' });
+    document.getElementById('chatBox').innerHTML = '<div class="chat-placeholder">Chat history cleared! Ask a new question.</div>';
+    showStatus('✅ Conversation history cleared.', 'success');
+  }
+</script>
+</body>
+</html>
